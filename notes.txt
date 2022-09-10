@@ -1,0 +1,95 @@
+Doel
+----
+o Website met relevante informatie, via mySQL
+  o Aanwezige accesspoints
+    o Huidige & verleden clients
+      o Huidige: starttijd online
+      o Verleden: laatst gezien
+      o Acesspoints
+      	o Verbindingen: starttijd en stoptijd
+      o Probes
+      	o Eerst gezien
+	o Laatst gezien
+      o Notes
+  o 
+o Database veranderingen
+  o connection
+    o toevoegen start- en stoptijd
+    o verwijderen check op duplicates (accesspoint, client)
+  o accesspoint
+    o MAC-adressen als string
+    o   
+
+Compilation:
+-------------------
+sudo apt-get install build-essential autoconf automake libtool pkg-config libnl-3-dev libnl-genl-3-dev libssl-dev ethtool shtool rfkill zlib1g-dev libpcap-dev libsqlite3-dev libpcre3-dev libhwloc-dev libcmocka-dev hostapd wpasupplicant tcpdump screen iw usbutils libmysqlclient-dev
+env NOCONFIGURE=1 ./autogen.sh
+./configure
+make
+--------------------
+sudo ./airodump-ng wlp4s0 -b abg
+--------------------
+
+
+MySQL:
+
+
+MySQL database: aircrack
+show tables;
++--------------------+
+| Tables_in_aircrack |
++--------------------+
+| accesspoint        |
+| client             |
+| connection         |
+| probe              |
++--------------------+
+describe accesspoint;
++--------------+---------------------+------+-----+---------+-------+
+| Field        | Type                | Null | Key | Default | Extra |
++--------------+---------------------+------+-----+---------+-------+
+| mac          | bigint(20) unsigned | NO   | PRI | 0       |       |
+| name         | text                | YES  |     | NULL    |       |
+| manufacturer | text                | YES  |     | NULL    |       |
+| note         | text                | YES  |     | NULL    |       |
++--------------+---------------------+------+-----+---------+-------+
+describe client;
++--------------+---------------------+------+-----+---------+-------+
+| Field        | Type                | Null | Key | Default | Extra |
++--------------+---------------------+------+-----+---------+-------+
+| mac          | bigint(20) unsigned | NO   | PRI | 0       |       |
+| manufacturer | text                | YES  |     | NULL    |       |
+| note         | text                | YES  |     | NULL    |       |
++--------------+---------------------+------+-----+---------+-------+
+describe connection;
++-------------+---------------------+------+-----+---------------------+-----------------------------+
+| Field       | Type                | Null | Key | Default             | Extra                       |
++-------------+---------------------+------+-----+---------------------+-----------------------------+
+| id          | int(11)             | NO   | PRI | NULL                | auto_increment              |
+| accesspoint | bigint(20) unsigned | YES  |     | NULL                |                             |
+| client      | bigint(20) unsigned | YES  |     | NULL                |                             |
+| first       | datetime            | NO   |     | 1970-01-01 00:00:01 |                             |
+| last        | timestamp           | NO   |     | CURRENT_TIMESTAMP   | on update CURRENT_TIMESTAMP |
+| location    | text                | YES  |     | NULL                |                             |
++-------------+---------------------+------+-----+---------------------+-----------------------------+
+
+describe probe;
++--------+---------------------+------+-----+---------+-------+
+| Field  | Type                | Null | Key | Default | Extra |
++--------+---------------------+------+-----+---------+-------+
+| client | bigint(20) unsigned | YES  |     | NULL    |       |
+| probe  | text                | YES  |     | NULL    |       |
++--------+---------------------+------+-----+---------+-------+
+
+Queries
+-------
+# Alle accesspoints
+select hex(mac), name, manufacturer, note from accesspoint order by name;
+# Aantal verbindingen per accesspoint
+select name, count(*) as aantal,mac, note from connection,accesspoint where connection.accesspoint = accesspoint.mac group by accesspoint order by aantal;
+# Aantal verbindingen per specifiek accesspoint
+select * from connection,accesspoint where connection.accesspoint = accesspoint.mac and accesspoint.name="Meterkast";
+
+select client, client.note, client.manufacturer from connection,accesspoint where connection.accesspoint = accesspoint.mac and accesspoint.name="Meterkast";
+
+select client, client.note, client.manufacturer from connection,accesspoint,client where client.mac = connection.client and connection.accesspoint = accesspoint.mac and accesspoint.name="Meterkast";

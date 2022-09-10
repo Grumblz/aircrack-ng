@@ -217,6 +217,8 @@ struct ST_info
 	float gps_loc_min[5]; /* min gps coordinates      */
 	float gps_loc_max[5]; /* max gps coordinates      */
 	float gps_loc_best[5]; /* best gps coordinates     */
+  int gmv_logged; // Logged or not?
+  
 };
 
 #endif //AIRCRACK_NG_STATION_H
