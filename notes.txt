@@ -13,13 +13,21 @@ o Website met relevante informatie, via mySQL
       o Notes
   o 
 o Database veranderingen
-  o connection
-    o toevoegen start- en stoptijd
-    o verwijderen check op duplicates (accesspoint, client)
-  o accesspoint
-    o MAC-adressen als string
-    o   
 
+  o accesspoint
+    x MAC-adressen als string
+    v Unieke combinaties van MAC,Name:
+      - text is blob => VARCHAR(32)
+      alter table accesspoint modify name varchar(32);
+    alter table accesspoint add unique index(mac,name);
+    alter table accesspoint drop PRIMARY KEY;
+  v Weghalen van accesspoint entries zonder naam als er ook een is met naam
+   o Toevoegen van accesspoint entries zonder naam als er geen is met naam
+  o connection
+    v toevoegen start- en stoptijd
+    o check op duplicates (accesspoint, client, starttijd)
+      alter table connection add unique index(accesspoint,client, first);
+    
 Compilation:
 -------------------
 sudo apt-get install build-essential autoconf automake libtool pkg-config libnl-3-dev libnl-genl-3-dev libssl-dev ethtool shtool rfkill zlib1g-dev libpcap-dev libsqlite3-dev libpcre3-dev libhwloc-dev libcmocka-dev hostapd wpasupplicant tcpdump screen iw usbutils libmysqlclient-dev
@@ -48,9 +56,10 @@ describe accesspoint;
 +--------------+---------------------+------+-----+---------+-------+
 | Field        | Type                | Null | Key | Default | Extra |
 +--------------+---------------------+------+-----+---------+-------+
-| mac          | bigint(20) unsigned | NO   | PRI | 0       |       |
-| name         | text                | YES  |     | NULL    |       |
+| mac          | bigint(20) unsigned | NO   | MUL | NULL    |       |
+| name         | varchar(32)         | YES  |     | NULL    |       |
 | manufacturer | text                | YES  |     | NULL    |       |
+| location     | text                | YES  |     | NULL    |       |
 | note         | text                | YES  |     | NULL    |       |
 +--------------+---------------------+------+-----+---------+-------+
 describe client;
@@ -90,6 +99,16 @@ select name, count(*) as aantal,mac, note from connection,accesspoint where conn
 # Aantal verbindingen per specifiek accesspoint
 select * from connection,accesspoint where connection.accesspoint = accesspoint.mac and accesspoint.name="Meterkast";
 
-select client, client.note, client.manufacturer from connection,accesspoint where connection.accesspoint = accesspoint.mac and accesspoint.name="Meterkast";
+select client, client.note, client.manufacturer from client,connection,accesspoint where connection.accesspoint = accesspoint.mac and connection.client = client.mac and accesspoint.name="Meterkast";
 
-select client, client.note, client.manufacturer from connection,accesspoint,client where client.mac = connection.client and connection.accesspoint = accesspoint.mac and accesspoint.name="Meterkast";
+
+# View connections
+select hex(connection.accesspoint),accesspoint.name,hex(connection.client),client.note from connection, accesspoint, client where connection.accesspoint = accesspoint.mac and connection.client = client.mac order by accesspoint;
+
+select hex(connection.accesspoint) as accesspoint,accesspoint.name,hex(connection.client) as client,client.manufacturer,ifnull(client.note,"") from connection, accesspoint, client where connection.accesspoint = accesspoint.mac and connection.client = client.mac order by accesspoint;
+
+
+# Some known clients
+update client set note="Gerwin Galaxy S7" where hex(mac)="6CC7EC0CE4F5";
+update client set note="Gerwin TB14" where hex(mac)="C8E2658BADB7";
+update client set note="Sanaz Galaxy A40" where hex(mac)="7C89563AB466";

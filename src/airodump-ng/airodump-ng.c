@@ -279,8 +279,8 @@ static struct local_options
 // GMV
 FILE * fp_log = NULL;
 
-char * mytime(){
-  time_t now = time(NULL);
+char * mytime(time_t now){
+  // time_t now = time(NULL);
   struct tm *loctime;
   loctime = localtime (&now);
   static char t1_buf[32];
@@ -304,7 +304,6 @@ FILE * fp_sql = NULL;
 
 void gmv_init_logs()
 {
-
   // GMV: open file for logging
   time_t t_start = time(NULL);
   char t_buf[32];
@@ -329,14 +328,13 @@ void gmv_init_logs()
   sprintf(filename,"aircrack_%s.sql",t_buf);
   fp_sql = fopen(filename,"a");
 #endif
-
 }
 
 
 void gmv_log_accesspoint(struct AP_info * ap_cur )
 {
   // GMV: Add to the textfile
-  fprintf(fp_log,"%s Accesspoint found: %02X %02X %02X %02X %02X %02X: %s: %s\n", mytime(), ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5], ap_cur->manuf, ap_cur->essid);
+  fprintf(fp_log,"%s Accesspoint found: %02X %02X %02X %02X %02X %02X: %s: %s\n", mytime(ap_cur->tinit), ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5], ap_cur->manuf, ap_cur->essid);
   fflush(fp_log);
   
   // insert into accesspoint values (x'001E8CF2C169',"Meterkast","ASUSTek COMPUTER INC.","Thuis");
@@ -358,7 +356,7 @@ void gmv_log_client(struct ST_info * st_cur)
   if (st_cur->gmv_logged == 1) return;
   st_cur->gmv_logged = 1;
   
-  fprintf(fp_log,"%s Client %02X %02X %02X %02X %02X %02X: %s\n",mytime(), st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], st_cur->manuf);
+  fprintf(fp_log,"%s Client %02X %02X %02X %02X %02X %02X: %s\n",mytime(time(NULL)), st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], st_cur->manuf);
   fflush(fp_log);
   
   // Save to database table "client"
@@ -378,12 +376,12 @@ void gmv_log_client(struct ST_info * st_cur)
 void gmv_log_connection(struct ST_info * st_cur, struct AP_info * ap_cur)
 {
   // GMV: Add to the textfile
-  fprintf(fp_log,"%s Connection between accesspoint %02X %02X %02X %02X %02X %02X and client %02X %02X %02X %02X %02X %02X\n", mytime(), ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5]);
+  fprintf(fp_log,"%s Connection between accesspoint %02X %02X %02X %02X %02X %02X and client %02X %02X %02X %02X %02X %02X\n", mytime(time(NULL)), ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5]);
   fflush(fp_log); 
   
   // Save to database table "client"
   char mysql_str[256];
-  sprintf(mysql_str, "INSERT into connection (accesspoint, client, first, last) VALUES (0x%02X%02X%02X%02X%02X%02X,0x%02X%02X%02X%02X%02X%02X,%s,%s);", ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], mytime(),mytime());
+  sprintf(mysql_str, "INSERT into connection (accesspoint, client, first, last) VALUES (0x%02X%02X%02X%02X%02X%02X,0x%02X%02X%02X%02X%02X%02X,%s,%s);", ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], mytime(st_cur->tinit),mytime(st_cur->tlast));
 #ifdef USE_MYSQL
   if (mysql_query(con, mysql_str)){
     fprintf(fp_log, "--- MySQL error %sfor %s\n", mysql_error(con),mysql_str);
@@ -1528,7 +1526,7 @@ static int dump_add_packet(unsigned char * h80211,
       ap_cur->ac_channel.wave_2 = 0;
       memset(ap_cur->ac_channel.mcs_index, 0, MAX_AC_MCS_INDEX);
 
-      gmv_log_accesspoint(ap_cur);
+      // gmv_log_accesspoint(ap_cur);
 		
     } // New AP found
 
@@ -1893,6 +1891,7 @@ static int dump_add_packet(unsigned char * h80211,
 
 	      memset(ap_cur->essid, 0, ESSID_LENGTH + 1);
 	      memcpy(ap_cur->essid, p + 2, n);
+	      gmv_log_accesspoint(ap_cur);
 
 	      if (opt.f_ivs != NULL && !ap_cur->essid_stored)
 		{
