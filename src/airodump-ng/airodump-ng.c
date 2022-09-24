@@ -283,7 +283,7 @@ char * mytime(time_t now){
   // time_t now = time(NULL);
   struct tm *loctime;
   loctime = localtime (&now);
-  static char t1_buf[32];
+  char * t1_buf = malloc(32);
   strftime (t1_buf, 32, "\"%Y-%m-%d %H:%M:%S\"", loctime);// date
   return t1_buf;
 }
@@ -313,6 +313,7 @@ void gmv_init_logs()
   strftime (t_buf, 32, "%Y%m%d_%H%M%S", loctime);// date
   sprintf(filename,"aircrack_%s.log",t_buf);
   fp_log = fopen(filename,"a");
+  //fp_log = stdout;
 
 #ifdef USE_MYSQL
   // Startup the connection to the MYSQL server
@@ -321,7 +322,7 @@ void gmv_init_logs()
   mysql_options(con, MYSQL_OPT_RECONNECT, &on);
   // Connect to database
   if (!mysql_real_connect(con, server, user, password, database, 0, NULL, 0)) {
-    fprintf(stderr, "%s\n", mysql_error(con));
+    fprintf(fp_log, "%s\n", mysql_error(con));
   }
   mysql_options(con, MYSQL_OPT_RECONNECT, &on);
 #else
@@ -334,8 +335,8 @@ void gmv_init_logs()
 void gmv_log_accesspoint(struct AP_info * ap_cur )
 {
   // GMV: Add to the textfile
-  fprintf(fp_log,"%s Accesspoint found: %02X %02X %02X %02X %02X %02X: %s: %s\n", mytime(ap_cur->tinit), ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5], ap_cur->manuf, ap_cur->essid);
-  fflush(fp_log);
+  // fprintf(fp_log,"%s Accesspoint found: %02X %02X %02X %02X %02X %02X: %s: %s\n", mytime(ap_cur->tinit), ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5], ap_cur->manuf, ap_cur->essid);
+  // fflush(fp_log);
   
   // insert into accesspoint values (x'001E8CF2C169',"Meterkast","ASUSTek COMPUTER INC.","Thuis");
   char mysql_str[256];
@@ -343,7 +344,7 @@ void gmv_log_accesspoint(struct AP_info * ap_cur )
   sprintf(mysql_str, "INSERT INTO accesspoint (mac,manufacturer,name) VALUES ( 0x%02X%02X%02X%02X%02X%02X, \"%s\", \"%s\" )", ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5], ap_cur->manuf,ap_cur->essid);
 #ifdef USE_MYSQL
   if (mysql_query(con, mysql_str)){
-    fprintf(fp_log, "--- MySQL error: %s\n", mysql_error(con));
+    // fprintf(fp_log, "--- MySQL error: %s\n", mysql_error(con));
   }
 #else  
   fprintf(fp_sql,"%s\n", mysql_str);
@@ -356,15 +357,15 @@ void gmv_log_client(struct ST_info * st_cur)
   if (st_cur->gmv_logged == 1) return;
   st_cur->gmv_logged = 1;
   
-  fprintf(fp_log,"%s Client %02X %02X %02X %02X %02X %02X: %s\n",mytime(time(NULL)), st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], st_cur->manuf);
-  fflush(fp_log);
+  // fprintf(fp_log,"%s Client %02X %02X %02X %02X %02X %02X: %s\n",mytime(time(NULL)), st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], st_cur->manuf);
+  // fflush(fp_log);
   
   // Save to database table "client"
   char mysql_str[256];
   sprintf(mysql_str, "INSERT into client (mac,manufacturer) VALUES (0x%02X%02X%02X%02X%02X%02X,\"%s\");", st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], st_cur->manuf);
 #ifdef USE_MYSQL      
   if (mysql_query(con, mysql_str)){
-    fprintf(fp_log, "--- MySQL error %sfor %s\n", mysql_error(con),mysql_str);
+    // fprintf(fp_log, "--- MySQL error %s for %s\n", mysql_error(con),mysql_str);
   }
 #else  
   fprintf(fp_sql,"%s\n", mysql_str);
@@ -376,16 +377,32 @@ void gmv_log_client(struct ST_info * st_cur)
 void gmv_log_connection(struct ST_info * st_cur, struct AP_info * ap_cur)
 {
   // GMV: Add to the textfile
-  fprintf(fp_log,"%s Connection between accesspoint %02X %02X %02X %02X %02X %02X and client %02X %02X %02X %02X %02X %02X\n", mytime(time(NULL)), ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5]);
-  fflush(fp_log); 
+  // fprintf(fp_log,"%s Connection between accesspoint %02X %02X %02X %02X %02X %02X and client %02X %02X %02X %02X %02X %02X\n", mytime(time(NULL)), ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5]);
+  // fflush(fp_log); 
   
   // Save to database table "client"
+  char * t1_str =  mytime(st_cur->tinit);
+  char * t2_str =  mytime(st_cur->tlast);
+  
   char mysql_str[256];
-  sprintf(mysql_str, "INSERT into connection (accesspoint, client, first, last) VALUES (0x%02X%02X%02X%02X%02X%02X,0x%02X%02X%02X%02X%02X%02X,%s,%s);", ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], mytime(st_cur->tinit),mytime(st_cur->tlast));
+  sprintf(mysql_str, "INSERT into connection (accesspoint, client, first, last) VALUES (0x%02X%02X%02X%02X%02X%02X,0x%02X%02X%02X%02X%02X%02X,%s,%s);", ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], t1_str,t2_str);
 #ifdef USE_MYSQL
   if (mysql_query(con, mysql_str)){
-    fprintf(fp_log, "--- MySQL error %sfor %s\n", mysql_error(con),mysql_str);
-  } 
+    // fprintf(fp_log, "--- MySQL error %s for %s\n", mysql_error(con),mysql_str);
+    // Assume that it's a duplicate: update
+    sprintf(mysql_str, "UPDATE connection SET last=%s where accesspoint = 0x%02X%02X%02X%02X%02X%02X and client = 0x%02X%02X%02X%02X%02X%02X and first = %s;", t2_str, ap_cur->bssid[0], ap_cur->bssid[1], ap_cur->bssid[2], ap_cur->bssid[3], ap_cur->bssid[4], ap_cur->bssid[5],st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], t1_str);
+    if (mysql_query(con, mysql_str)){
+      //fprintf(fp_log, "--- MySQL error %s for %s\n", mysql_error(con),mysql_str);
+      // fflush(fp_log);
+    } else
+      {
+	// fprintf(fp_log, "??? Supposedly successfull update (%s) for %s\n", mysql_error(con),mysql_str);
+	// fflush(fp_log);
+      }
+    
+  }
+  free(t1_str);
+  free(t2_str);
   
   // To do: 
   // o add begin time and date
@@ -393,6 +410,25 @@ void gmv_log_connection(struct ST_info * st_cur, struct AP_info * ap_cur)
 #else  
   fprintf(fp_sql,"%s\n", mysql_str);
   fflush(fp_sql);
+#endif
+}
+
+void gmv_log_probe(struct ST_info * st_cur, char * probe)
+{
+
+  fprintf(fp_log, "Probe detected from %02X %02X %02X %02X %02X %02X for %s\n", st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5],probe);
+  fflush(fp_log);
+  
+  // Save to database table "probe"
+  char mysql_str[256];
+  sprintf(mysql_str, "INSERT into probe (client,probe) VALUES (0x%02X%02X%02X%02X%02X%02X,\"%s\");", st_cur->stmac[0], st_cur->stmac[1], st_cur->stmac[2],st_cur->stmac[3], st_cur->stmac[4], st_cur->stmac[5], st_cur->probes[st_cur->probe_index]);
+#ifdef USE_MYSQL
+  if (mysql_query(con, mysql_str)){
+    fprintf(fp_log, "--- MySQL error %s for %s\n", mysql_error(con),mysql_str);
+  }
+#else  
+  fprintf(fp_sql,"%s\n", mysql_str);
+  fflush(fp_sql);  
 #endif
 }
 
@@ -1739,17 +1775,17 @@ static int dump_add_packet(unsigned char * h80211,
   if (st_cur->base == NULL || memcmp(ap_cur->bssid, BROADCAST, 6) != 0) // GMV: moet dit niet && zijn i.p.v. || ?
     {
       st_cur->base = ap_cur;
-      
-      gmv_log_connection(st_cur, ap_cur);
+
     }
-  
+
   // update bitrate to station
   if ((h80211[1] & 3) == 2) st_cur->rate_to = ri->ri_rate;
 
   /* update the last time seen */
 
   st_cur->tlast = time(NULL);
-
+  gmv_log_connection(st_cur, ap_cur);
+  
   /* only update power if packets comes from the
    * client: either type == Mgmt and SA != BSSID,
    * or FromDS == 0 and ToDS == 1 */
@@ -1847,6 +1883,8 @@ static int dump_add_packet(unsigned char * h80211,
 		    if (c < 32) c = '.';
 		    st_cur->probes[st_cur->probe_index][i] = c;
 		  }
+
+	      gmv_log_probe(st_cur, st_cur->probes[st_cur->probe_index]);
 	    }
 
 	  p += 2 + p[1];
@@ -3595,7 +3633,6 @@ static int IsAp2BeSkipped(struct AP_info * ap_cur)
 
 static void dump_print(int ws_row, int ws_col, int if_num)
 {
-  
   time_t tt;
   struct tm * lt;
   int nlines, i, n;

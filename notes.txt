@@ -107,6 +107,8 @@ select hex(connection.accesspoint),accesspoint.name,hex(connection.client),clien
 
 select hex(connection.accesspoint) as accesspoint,accesspoint.name,hex(connection.client) as client,client.manufacturer,ifnull(client.note,"") from connection, accesspoint, client where connection.accesspoint = accesspoint.mac and connection.client = client.mac order by accesspoint;
 
+select accesspoint, client, first, last, last-first  from connection where first > date_sub(now(), interval 5 minute) order by client,first;
+
 
 # Some known clients
 update client set note="Gerwin Galaxy S7" where hex(mac)="6CC7EC0CE4F5";
