@@ -1783,8 +1783,20 @@ static int dump_add_packet(unsigned char * h80211,
 
   /* update the last time seen */
 
-  st_cur->tlast = time(NULL);
+  // GMV: Check if the last time seen was less than 5 minutes ago:
+  time_t now = time(NULL);
+  if ((now-st_cur->tlast)>300) // Re-init connection
+    {
+      st_cur->tinit = now;
+      st_cur->tlast = now;
+    }
+  else
+    {
+      st_cur->tlast = now;
+    }
   gmv_log_connection(st_cur, ap_cur);
+  // VMG
+
   
   /* only update power if packets comes from the
    * client: either type == Mgmt and SA != BSSID,
